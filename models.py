@@ -28,7 +28,7 @@ class VAE(nn.Module):
     def forward(self, x, c=None):
 
         if x.dim() > 2:
-            x = x.view(-1, 28*28)
+            x = x.view(-1, 28*28)   # 在生成中常用的，先将图片view成向量
 
         means, log_var = self.encoder(x, c)
         z = self.reparameterize(means, log_var)
@@ -38,8 +38,8 @@ class VAE(nn.Module):
 
     def reparameterize(self, mu, log_var):
 
-        std = torch.exp(0.5 * log_var)
-        eps = torch.randn_like(std)
+        std = torch.exp(0.5 * log_var)   # std指的是标准差
+        eps = torch.randn_like(std)   # eps是从正态分布随机采样的
 
         return mu + eps * std
 

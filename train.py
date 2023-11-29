@@ -13,6 +13,14 @@ from collections import defaultdict
 from models import VAE
 
 
+def loss_fn(recon_x, x, mean, log_var):
+        BCE = torch.nn.functional.binary_cross_entropy(
+            recon_x.view(-1, 28*28), x.view(-1, 28*28), reduction='sum')
+        KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
+
+        return (BCE + KLD) / x.size(0)
+
+
 def main(args):
 
     torch.manual_seed(args.seed)
@@ -28,13 +36,6 @@ def main(args):
         download=True)
     data_loader = DataLoader(
         dataset=dataset, batch_size=args.batch_size, shuffle=True)
-
-    def loss_fn(recon_x, x, mean, log_var):
-        BCE = torch.nn.functional.binary_cross_entropy(
-            recon_x.view(-1, 28*28), x.view(-1, 28*28), reduction='sum')
-        KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
-
-        return (BCE + KLD) / x.size(0)
 
     vae = VAE(
         encoder_layer_sizes=args.encoder_layer_sizes,
@@ -53,10 +54,10 @@ def main(args):
 
         for iteration, (x, y) in enumerate(data_loader):
 
-            x, y = x.to(device), y.to(device)
+            x, y = x.to(device), y.to(device)   # x.shape = (b, 1, h, w), y.shape = (b, )
 
             if args.conditional:
-                recon_x, mean, log_var, z = vae(x, y)
+                recon_x, mean, log_var, z = vae(x, y)   # recon_x.shape = (b, 784), 剩下三个的shape = (b, 2)
             else:
                 recon_x, mean, log_var, z = vae(x)
 
@@ -81,11 +82,12 @@ def main(args):
                 if args.conditional:
                     c = torch.arange(0, 10).long().unsqueeze(1).to(device)
                     z = torch.randn([c.size(0), args.latent_size]).to(device)
-                    x = vae.inference(z, c=c)
+                    x = vae.inference(z, c=c)   # 推理一些结果
                 else:
                     z = torch.randn([10, args.latent_size]).to(device)
                     x = vae.inference(z)
 
+                # 将推理结果可视化
                 plt.figure()
                 plt.figure(figsize=(5, 10))
                 for p in range(10):
@@ -94,7 +96,7 @@ def main(args):
                         plt.text(
                             0, 0, "c={:d}".format(c[p].item()), color='black',
                             backgroundcolor='white', fontsize=8)
-                    plt.imshow(x[p].view(28, 28).cpu().data.numpy())
+                    plt.imshow(x[p].view(28, 28).cpu().data.numpy())   # 要view一下
                     plt.axis('off')
 
                 if not os.path.exists(os.path.join(args.fig_root, str(ts))):
